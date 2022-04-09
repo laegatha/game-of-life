@@ -1,5 +1,5 @@
 import skia
-from IPython.display import display, Image
+from IPython.display import display
 
 from back.neighbors_searcher import NeighborsSearcher
 from back.cell_state_calculator import CellStateCalculator
@@ -57,8 +57,7 @@ class GameLauncher:
                         rect, paint = self.draw_one_cell(row=i, col=j, color='white')
                     canvas.drawRect(rect, paint)
 
-        image = surface.makeImageSnapshot()
-        display(Image(data=image.encodeToData()))
+        display(surface.makeImageSnapshot())
 
     def launch_game(self, n_row: int, n_col: int, height: int, width: int, initial_state: list):
         n_iter = self.n_iter_choice()
