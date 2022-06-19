@@ -58,10 +58,6 @@ class GameLauncher:
                     else:
                         rect, paint = self.draw_one_cell(row=i, col=j, color='black')
                     canvas.drawRect(rect, paint)
-            #canvas.clear(skia.ColorBLACK)
-        surface.flushAndSubmit()
-        glfw.swap_buffers(window)
-        time.sleep(2)
 
     def launch_game(self, n_row: int, n_col: int, height: int, width: int, initial_state: list):
         n_iter = self.n_iter_choice()
@@ -69,13 +65,21 @@ class GameLauncher:
             GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
             with skia_surface(window) as surface:
+                print("Initial state")
+                self.draw_table(window=window, surface=surface, table=initial_state, n_row=n_row, n_col=n_col)
+                surface.flushAndSubmit()
+                glfw.swap_buffers(window)
                 next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=initial_state)
-                self.draw_table(window=window, surface=surface, table=next_table, n_row=n_row, n_col=n_col)
+                time.sleep(2)
 
-                for i in range(1, n_iter):
-                    next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=next_table)
+                for i in range(n_iter):
+                    print(f"State {i+1}")
                     self.draw_table(window=window, surface=surface, table=next_table, n_row=n_row, n_col=n_col)
+                    surface.flushAndSubmit()
+                    glfw.swap_buffers(window)
+                    next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=next_table)
+                    time.sleep(2)
 
-                while (glfw.get_key(window, glfw.KEY_ESCAPE) != glfw.PRESS
-                       and not glfw.window_should_close(window)):
-                    glfw.wait_events()
+            while (glfw.get_key(window, glfw.KEY_ESCAPE) != glfw.PRESS
+                   and not glfw.window_should_close(window)):
+                glfw.wait_events()
