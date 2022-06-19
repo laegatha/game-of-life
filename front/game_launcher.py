@@ -1,13 +1,10 @@
-import time
+import os
 import skia
-import glfw
-from OpenGL import GL
+import glob
+from PIL import Image
 
-from back.neighbors_searcher import NeighborsSearcher
 from back.cell_state_calculator import CellStateCalculator
-
 from front.cell_caracteristics import CELL_SIZE
-from front.window_manager import glfw_window, skia_surface
 
 class GameLauncher:
     def __init__(self):
@@ -26,21 +23,6 @@ class GameLauncher:
         return n_iter
 
     @staticmethod
-    def compute_next_state_table(n_row: int, n_col: int, actual_state: list) -> list:
-        next_state_table = []
-        for i in range(n_row):
-            l_row = []
-            for j in range(n_col):
-                neighbors = NeighborsSearcher().get_neighbors(n_row=n_row, n_col=n_col, table=actual_state, x=i, y=j)
-                next_state_cell = CellStateCalculator().compute_next_state_cell(actual_state=actual_state[i][j],
-                                                                                neighbors=neighbors)
-                l_row.append(next_state_cell)
-
-            next_state_table.append(l_row)
-
-        return next_state_table
-
-    @staticmethod
     def draw_one_cell(row: int, col: int, color: str):
         rect = skia.Rect(col * CELL_SIZE, row * CELL_SIZE, (col + 1) * CELL_SIZE, (row + 1) * CELL_SIZE)
         paint = skia.Paint(
@@ -49,7 +31,7 @@ class GameLauncher:
 
         return rect, paint
 
-    def draw_table(self, window, surface, table: list, n_row: int, n_col: int):
+    def draw_table(self, surface, table: list, n_row: int, n_col: int):
         with surface as canvas:
             for i in range(n_row):
                 for j in range(n_col):
@@ -58,28 +40,39 @@ class GameLauncher:
                     else:
                         rect, paint = self.draw_one_cell(row=i, col=j, color='black')
                     canvas.drawRect(rect, paint)
+        return surface.makeImageSnapshot()
+
+    @staticmethod
+    def create_gif(images_path):
+        fp_in = images_path + "\\state*.png"
+        fp_out = images_path + "\\game_of_life.gif"
+        imgs = (Image.open(f) for f in sorted(glob.glob(fp_in)))
+        img = next(imgs)  # extract first image from iterator
+        img.save(fp=fp_out, format='GIF', append_images=imgs,
+                 save_all=True, duration=200, loop=0)
 
     def launch_game(self, n_row: int, n_col: int, height: int, width: int, initial_state: list):
         n_iter = self.n_iter_choice()
-        with glfw_window(height, width) as window:
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+        images_path = os.path.dirname(os.getcwd()) + "\\output\\images"
+        for f in os.listdir(images_path):
+            os.remove(os.path.join(images_path, f))
+        surface = skia.Surface(height=height, width=width)
 
-            with skia_surface(window) as surface:
-                print("Initial state")
-                self.draw_table(window=window, surface=surface, table=initial_state, n_row=n_row, n_col=n_col)
-                surface.flushAndSubmit()
-                glfw.swap_buffers(window)
-                next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=initial_state)
-                time.sleep(2)
+        print("Initial state")
+        table = self.draw_table(surface=surface, table=initial_state, n_row=n_row, n_col=n_col)
+        display(table)
+        table.save(images_path + "\\state1.png")
 
-                for i in range(n_iter):
-                    print(f"State {i+1}")
-                    self.draw_table(window=window, surface=surface, table=next_table, n_row=n_row, n_col=n_col)
-                    surface.flushAndSubmit()
-                    glfw.swap_buffers(window)
-                    next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=next_table)
-                    time.sleep(2)
+        next_table = CellStateCalculator().compute_next_state_table(n_row=n_row, n_col=n_col,
+                                                                    actual_state=initial_state)
 
-            while (glfw.get_key(window, glfw.KEY_ESCAPE) != glfw.PRESS
-                   and not glfw.window_should_close(window)):
-                glfw.wait_events()
+        for i in range(1, n_iter):
+            print(f"State {i+1}")
+            table = self.draw_table(surface=surface, table=next_table, n_row=n_row, n_col=n_col)
+            display(table)
+            table.save(images_path + f"\\state{i+1}.png")
+
+            next_table = CellStateCalculator().compute_next_state_table(n_row=n_row, n_col=n_col,
+                                                                        actual_state=next_table)
+
+        self.create_gif(images_path=images_path)
