@@ -1,10 +1,13 @@
+import time
 import skia
-from IPython.display import display
+import glfw
+from OpenGL import GL
 
 from back.neighbors_searcher import NeighborsSearcher
 from back.cell_state_calculator import CellStateCalculator
 
 from front.cell_caracteristics import CELL_SIZE
+from front.window_manager import glfw_window, skia_surface
 
 class GameLauncher:
     def __init__(self):
@@ -46,26 +49,37 @@ class GameLauncher:
 
         return rect, paint
 
-    def draw_table(self, table: list, n_row:int, n_col:int, height: int, width: int):
-        surface = skia.Surface(height, width)
+    def draw_table(self, window, surface, table: list, n_row: int, n_col: int):
         with surface as canvas:
             for i in range(n_row):
                 for j in range(n_col):
                     if table[i][j] == 1:
-                        rect, paint = self.draw_one_cell(row=i, col=j, color='black')
-                    else:
                         rect, paint = self.draw_one_cell(row=i, col=j, color='white')
+                    else:
+                        rect, paint = self.draw_one_cell(row=i, col=j, color='black')
                     canvas.drawRect(rect, paint)
-
-        display(surface.makeImageSnapshot())
 
     def launch_game(self, n_row: int, n_col: int, height: int, width: int, initial_state: list):
         n_iter = self.n_iter_choice()
-        next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=initial_state)
-        self.draw_table(table=next_table, n_row=n_row, n_col=n_col, height=height, width=width)
+        with glfw_window(height, width) as window:
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
 
-        for i in range(1, n_iter):
-            next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=next_table)
-            print(' ')
-            self.draw_table(table=next_table, n_row=n_row, n_col=n_col, height=height, width=width)
+            with skia_surface(window) as surface:
+                print("Initial state")
+                self.draw_table(window=window, surface=surface, table=initial_state, n_row=n_row, n_col=n_col)
+                surface.flushAndSubmit()
+                glfw.swap_buffers(window)
+                next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=initial_state)
+                time.sleep(2)
 
+                for i in range(n_iter):
+                    print(f"State {i+1}")
+                    self.draw_table(window=window, surface=surface, table=next_table, n_row=n_row, n_col=n_col)
+                    surface.flushAndSubmit()
+                    glfw.swap_buffers(window)
+                    next_table = self.compute_next_state_table(n_row=n_row, n_col=n_col, actual_state=next_table)
+                    time.sleep(2)
+
+            while (glfw.get_key(window, glfw.KEY_ESCAPE) != glfw.PRESS
+                   and not glfw.window_should_close(window)):
+                glfw.wait_events()
