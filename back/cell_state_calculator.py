@@ -1,4 +1,4 @@
-
+from back.neighbors_searcher import NeighborsSearcher
 
 class CellStateCalculator:
     def __init__(self):
@@ -31,3 +31,17 @@ class CellStateCalculator:
             next_state = self.get_next_state_dead_cell(nb_neighbors)
 
         return next_state
+
+    def compute_next_state_table(self, n_row: int, n_col: int, actual_state: list) -> list:
+        next_state_table = []
+        for i in range(n_row):
+            l_row = []
+            for j in range(n_col):
+                neighbors = NeighborsSearcher().get_neighbors(n_row=n_row, n_col=n_col, table=actual_state, x=i, y=j)
+                next_state_cell = self.compute_next_state_cell(actual_state=actual_state[i][j],
+                                                                                neighbors=neighbors)
+                l_row.append(next_state_cell)
+
+            next_state_table.append(l_row)
+
+        return next_state_table
